@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de Casos - Servicio Técnico</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #0f172a;
+      color: #f1f5f9;
+    }
+    .font-mono-num {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white relative">
+
+  <!-- Header Enterprise -->
+  <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 px-6 py-4 flex flex-wrap items-center justify-between gap-4 shadow-md">
+    <div class="flex items-center gap-3.5">
+      <div class="w-11 h-11 bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 rounded-2xl flex items-center justify-center text-lg shadow-inner">
+        <i class="fa-solid fa-server"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-bold text-base text-white tracking-tight">Gestión de Casos</h1>
+          <span class="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-indigo-500/10 text-indigo-400 rounded-full border border-indigo-500/20">Servicio Técnico</span>
+        </div>
+        <p class="text-xs text-slate-400 font-medium">Control Operativo: <strong class="text-indigo-300" id="currentZoneLabel">Todas las Zonas</strong></p>
+      </div>
+    </div>
+
+    <!-- Botonera de Acciones & Selector de Vista -->
+    <div class="flex flex-wrap items-center gap-3">
+      
+      <!-- Notificación Campana de Vencimientos -->
+      <div class="relative">
+        <button onclick="toggleBellDropdown()" class="relative p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-xl border border-slate-700 transition flex items-center justify-center" title="Próximos Vencimientos">
+          <i class="fa-solid fa-bell text-amber-400 text-sm"></i>
+          <span id="bellBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full hidden">0</span>
+        </button>
+
+        <!-- Dropdown de Urgencias -->
+        <div id="bellDropdown" class="absolute right-0 mt-2 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-50 hidden p-3 space-y-2">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+            <span class="text-xs font-bold text-white flex items-center gap-1.5">
+              <i class="fa-solid fa-triangle-exclamation text-amber-400"></i> Urgencias (Hoy / Mañana)
+            </span>
+            <button onclick="toggleBellDropdown()" class="text-slate-500 hover:text-slate-300"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div id="bellListContainer" class="space-y-2 max-h-64 overflow-y-auto">
+            <!-- Dinámico -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Selector de Vista (Tabla / Tarjetas / Tablero) -->
+      <div class="bg-slate-950 p-1 rounded-xl flex items-center gap-1 border border-slate-800">
+        <button onclick="setViewMode('table')" id="btnViewTable" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-sm transition flex items-center gap-1.5">
+          <i class="fa-solid fa-table-list text-[11px]"></i> TABLA
+        </button>
+        <button onclick="setViewMode('cards')" id="btnViewCards" class="px-3 py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1.5">
+          <i class="fa-solid fa-grip text-[11px]"></i> TARJETAS
+        </button>
+        <button onclick="setViewMode('kanban')" id="btnViewKanban" class="px-3 py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1.5">
+          <i class="fa-solid fa-columns text-[11px]"></i> TABLERO
+        </button>
+      </div>
+
+      <button onclick="clearAllData()" class="px-3.5 py-2 bg-red-950/60 hover:bg-red-900/80 text-red-300 text-xs font-semibold rounded-xl border border-red-800/60 shadow-xs transition flex items-center gap-2" title="Vaciar todos los registros">
+        <i class="fa-solid fa-trash-can"></i>
+        <span class="hidden sm:inline">Limpiar Todo</span>
+      </button>
+
+      <!-- Botón Importar CSV -->
+      <button onclick="document.getElementById('importFile').click()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-xl border border-slate-700 shadow-xs transition flex items-center gap-2" title="Importar desde CSV">
+        <i class="fa-solid fa-file-import text-cyan-400"></i>
+        <span class="hidden sm:inline">Importar</span>
+      </button>
+      <input type="file" id="importFile" accept=".csv" class="hidden" onchange="importFromCSV(event)">
+
+      <!-- Botón Exportar CSV -->
+      <button onclick="exportToCSV()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-xl border border-slate-700 shadow-xs transition flex items-center gap-2">
+        <i class="fa-solid fa-file-excel text-emerald-400"></i>
+        <span class="hidden sm:inline">Exportar</span>
+      </button>
+
+      <button onclick="openModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center gap-2">
+        <i class="fa-solid fa-plus text-[11px]"></i>
+        <span>Nuevo Caso ST</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Contenedor Principal -->
+  <main class="flex-1 p-6 max-w-[1700px] w-full mx-auto flex flex-col gap-6">
+
+    <!-- Pestañas de División Geográfica -->
+    <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+      <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2"><i class="fa-solid fa-map-location-dot mr-1.5 text-indigo-400"></i> Zona:</span>
+      <button onclick="setZoneTab('TODAS')" id="tabZonaTodas" class="px-4 py-2 text-xs font-bold rounded-xl bg-indigo-600 text-white shadow-sm transition">
+        Todas las Zonas
+      </button>
+      <button onclick="setZoneTab('Central')" id="tabZonaCentral" class="px-4 py-2 text-xs font-bold rounded-xl bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800 transition">
+        Central
+      </button>
+      <button onclick="setZoneTab('Interior')" id="tabZonaInterior" class="px-4 py-2 text-xs font-bold rounded-xl bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800 transition">
+        Interior
+      </button>
+    </div>
+
+    <!-- Tarjetas de Resumen KPI -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-gradient-to-br from-red-950/30 via-slate-900 to-slate-900 border border-red-900/40 rounded-2xl p-4 flex flex-col justify-between shadow-xs relative overflow-hidden">
+        <div class="absolute right-3 top-3 w-8 h-8 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center text-xs border border-red-500/20">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <span class="text-[11px] font-bold text-red-400 uppercase tracking-wider">Atrasados / Vencidos</span>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="kpi-atrasados" class="text-3xl font-extrabold text-red-500 font-mono-num">0</span>
+          <span class="text-[10px] text-red-400 font-medium bg-red-500/10 px-2 py-0.5 rounded border border-red-500/10">Prioridad</span>
+        </div>
+      </div>
+
+      <div class="bg-gradient-to-br from-amber-950/25 via-slate-900 to-slate-900 border border-amber-900/30 rounded-2xl p-4 flex flex-col justify-between shadow-xs relative overflow-hidden">
+        <div class="absolute right-3 top-3 w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-xs border border-amber-500/20">
+          <i class="fa-solid fa-clock"></i>
+        </div>
+        <span class="text-[11px] font-bold text-amber-400 uppercase tracking-wider">Pendientes (Al Día)</span>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="kpi-pendientes" class="text-3xl font-extrabold text-amber-400 font-mono-num">0</span>
+          <span class="text-[10px] text-amber-400 font-medium bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/10">En fecha</span>
+        </div>
+      </div>
+
+      <div class="bg-gradient-to-br from-blue-950/30 via-slate-900 to-slate-900 border border-blue-900/30 rounded-2xl p-4 flex flex-col justify-between shadow-xs relative overflow-hidden">
+        <div class="absolute right-3 top-3 w-8 h-8 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center text-xs border border-blue-500/20">
+          <i class="fa-solid fa-calendar-days"></i>
+        </div>
+        <span class="text-[11px] font-bold text-blue-400 uppercase tracking-wider">Reagendados</span>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="kpi-reagendados" class="text-3xl font-extrabold text-blue-400 font-mono-num">0</span>
+          <span class="text-[10px] text-blue-400 font-medium bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/10">Reprogramado</span>
+        </div>
+      </div>
+
+      <div class="bg-gradient-to-br from-slate-800/50 via-slate-900 to-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-xs relative overflow-hidden">
+        <div class="absolute right-3 top-3 w-8 h-8 rounded-xl bg-slate-800 text-slate-300 flex items-center justify-center text-xs border border-slate-700">
+          <i class="fa-solid fa-list-check"></i>
+        </div>
+        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total en Zona</span>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="kpi-total" class="text-3xl font-extrabold text-white font-mono-num">0</span>
+          <span class="text-[10px] text-slate-400 font-medium bg-slate-800 px-2 py-0.5 rounded border border-slate-700">Registros</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dashboard Técnico y Estadísticas (BI) Colapsable -->
+    <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xs">
+      <div class="flex items-center justify-between mb-4 cursor-pointer" onclick="toggleBISection()">
+        <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+          <i class="fa-solid fa-chart-pie text-indigo-400"></i> Dashboard Técnico & Business Intelligence (BI)
+        </h3>
+        <button class="text-slate-400 hover:text-white text-xs"><i id="biToggleIcon" class="fa-solid fa-chevron-up"></i></button>
+      </div>
+
+      <div id="biContentArea" class="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2 border-t border-slate-800/60">
+        <!-- Rendimiento Técnicos -->
+        <div class="space-y-3">
+          <h4 class="text-[11px] font-bold text-indigo-400 uppercase tracking-wide">Rendimiento por Técnico</h4>
+          <div id="techProgressContainer" class="space-y-2.5"></div>
+        </div>
+        <!-- Equipos que más fallan -->
+        <div class="space-y-3">
+          <h4 class="text-[11px] font-bold text-amber-400 uppercase tracking-wide">Equipos con más Fallas</h4>
+          <div id="equipmentStatsContainer" class="space-y-2.5"></div>
+        </div>
+        <!-- Distribución Geográfica -->
+        <div class="space-y-3">
+          <h4 class="text-[11px] font-bold text-emerald-400 uppercase tracking-wide">Zona Central vs. Interior</h4>
+          <div id="geoStatsContainer" class="space-y-2.5"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Barra de Búsqueda y Filtros Avanzados -->
+    <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col gap-4 shadow-xs">
+      <div class="flex flex-col lg:flex-row items-center justify-between gap-4">
+        <div class="relative w-full lg:w-96">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+          <input type="text" id="searchInput" oninput="renderApp()" placeholder="Buscar por Nro. Caso, Cliente, Equipo..." 
+                 class="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition">
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-start lg:justify-end">
+          <div class="flex items-center gap-2">
+            <label class="text-xs font-semibold text-slate-400 whitespace-nowrap">Técnico:</label>
+            <select id="techFilter" onchange="renderApp()" class="bg-slate-950 border border-slate-800 text-slate-300 text-xs font-medium rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500">
+              <option value="TODOS">Todos los Encargados</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <label class="text-xs font-semibold text-slate-400 whitespace-nowrap">Estado:</label>
+            <select id="statusFilter" onchange="renderApp()" class="bg-slate-950 border border-slate-800 text-slate-300 text-xs font-medium rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500">
+              <option value="TODOS">Todos los Estados</option>
+              <option value="PENDIENTE_ATRASADO">Pendientes (Atrasados)</option>
+              <option value="PENDIENTE_DIA">Pendientes (Al Día)</option>
+              <option value="REAGENDADO">Reagendados</option>
+              <option value="FINALIZADO">Finalizados</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <label class="text-xs font-semibold text-slate-400 whitespace-nowrap">Prioridad:</label>
+            <select id="priorityFilter" onchange="renderApp()" class="bg-slate-950 border border-slate-800 text-slate-300 text-xs font-medium rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500">
+              <option value="TODOS">Todas</option>
+              <option value="Alta">Alta 🚨</option>
+              <option value="Media">Media ⚠️</option>
+              <option value="Baja">Baja 🟢</option>
+            </select>
+          </div>
+
+          <button onclick="resetFilters()" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 rounded-xl text-xs border border-slate-700 transition" title="Limpiar filtros">
+            <i class="fa-solid fa-rotate-left"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-800/60 text-xs text-slate-400">
+        <span class="font-bold text-slate-300 flex items-center gap-1.5"><i class="fa-regular fa-calendar text-indigo-400"></i> Agendado entre:</span>
+        <div class="flex items-center gap-2">
+          <span>Desde:</span>
+          <input type="date" id="dateFromFilter" onchange="renderApp()" class="bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-indigo-500">
+        </div>
+        <div class="flex items-center gap-2">
+          <span>Hasta:</span>
+          <input type="date" id="dateToFilter" onchange="renderApp()" class="bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-indigo-500">
+        </div>
+      </div>
+    </section>
+
+    <!-- Contenedor Principal (Tabla, Tarjetas o Tablero Kanban) -->
+    <section class="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden flex flex-col flex-1">
+      
+      <!-- VISTA DE TABLA -->
+      <div id="tableViewContainer" class="overflow-x-auto max-h-[620px]">
+        <table class="w-full text-left border-collapse">
+          <thead class="bg-slate-950 text-slate-400 text-[11px] font-bold uppercase tracking-wider sticky top-0 z-10 border-b border-slate-800">
+            <tr>
+              <th class="py-4 px-4 text-center">Nro. Caso</th>
+              <th class="py-4 px-4">Cliente</th>
+              <th class="py-4 px-4">Equipos</th>
+              <th class="py-4 px-4 text-center">Zona / Prioridad</th>
+              <th class="py-4 px-4">Encargado</th>
+              <th class="py-4 px-4 text-center">Fecha Agendado & SLA</th>
+              <th class="py-4 px-4 text-center">Estado</th>
+              <th class="py-4 px-4 text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-slate-800/60 text-xs font-medium text-slate-300"></tbody>
+        </table>
+      </div>
+
+      <!-- VISTA DE TARJETAS (Grid) -->
+      <div id="cardViewContainer" class="hidden p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[620px] overflow-y-auto"></div>
+
+      <!-- VISTA DE TABLERO KANBAN -->
+      <div id="kanbanViewContainer" class="hidden p-5 grid grid-cols-1 md:grid-cols-3 gap-5 max-h-[650px] overflow-y-auto">
+        <!-- Columna Pendientes -->
+        <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3 min-h-[500px]" ondragover="allowDrop(event)" ondrop="dropCase(event, 'Pendiente')">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+            <h4 class="font-bold text-amber-400 text-xs uppercase tracking-wider flex items-center gap-2">
+              <i class="fa-solid fa-clock"></i> Pendientes <span id="kanbanCountPendiente" class="px-2 py-0.5 bg-amber-500/10 text-amber-400 rounded-full text-[10px]">0</span>
+            </h4>
+          </div>
+          <div id="kanbanColPendiente" class="flex flex-col gap-3 flex-1 overflow-y-auto"></div>
+        </div>
+
+        <!-- Columna Reagendados -->
+        <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3 min-h-[500px]" ondragover="allowDrop(event)" ondrop="dropCase(event, 'Reagendado')">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+            <h4 class="font-bold text-blue-400 text-xs uppercase tracking-wider flex items-center gap-2">
+              <i class="fa-solid fa-calendar-days"></i> Reagendados <span id="kanbanCountReagendado" class="px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded-full text-[10px]">0</span>
+            </h4>
+          </div>
+          <div id="kanbanColReagendado" class="flex flex-col gap-3 flex-1 overflow-y-auto"></div>
+        </div>
+
+        <!-- Columna Finalizados -->
+        <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3 min-h-[500px]" ondragover="allowDrop(event)" ondrop="dropCase(event, 'Finalizado')">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+            <h4 class="font-bold text-emerald-400 text-xs uppercase tracking-wider flex items-center gap-2">
+              <i class="fa-solid fa-list-check"></i> Finalizados <span id="kanbanCountFinalizado" class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-full text-[10px]">0</span>
+            </h4>
+          </div>
+          <div id="kanbanColFinalizado" class="flex flex-col gap-3 flex-1 overflow-y-auto"></div>
+        </div>
+      </div>
+
+      <!-- Pie de Tabla -->
+      <div class="px-6 py-4 bg-slate-950 border-t border-slate-800 text-xs text-slate-400 flex items-center justify-between">
+        <span id="recordCount">Mostrando 0 registros</span>
+        <span class="font-bold text-indigo-400 text-[11px] tracking-wide">MÓDULO: SERVICIO TÉCNICO</span>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal Nuevo / Editar Caso -->
+  <div id="caseModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden my-8">
+      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20">
+            <i class="fa-solid fa-pen-to-square text-xs" id="modalIcon"></i>
+          </div>
+          <h3 id="modalTitle" class="font-bold text-white text-sm">Nuevo Caso de Servicio Técnico</h3>
+        </div>
+        <button onclick="closeModal()" class="text-slate-500 hover:text-slate-300"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <form id="newCaseForm" onsubmit="handleSaveCase(event)" class="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+        <input type="hidden" id="editOriginalNroCaso">
+        
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Nro. Caso *</label>
+            <input type="text" id="inputNroCaso" required placeholder="Ej. 38940" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono-num focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Zona Geográfica *</label>
+            <select id="inputZona" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 font-semibold">
+              <option value="Central">Central</option>
+              <option value="Interior">Interior</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Cliente *</label>
+            <input type="text" id="inputCliente" required placeholder="Institución o Cliente" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 uppercase">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Equipos:</label>
+            <input type="text" id="inputEquipos" placeholder="Modelo o nombre del equipo" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Contacto:</label>
+            <input type="text" id="inputContacto" placeholder="Nombre / Teléfono" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Encargado:</label>
+            <input type="text" id="inputEncargado" placeholder="Técnico asignado" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Detalle</label>
+          <textarea id="inputDetalle" rows="2" placeholder="Descripción del problema..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Fecha Caso *</label>
+            <input type="date" id="inputFechaCaso" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Fecha Agendado *</label>
+            <input type="date" id="inputFechaAgendado" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Estado</label>
+            <select id="inputEstado" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+              <option value="Pendiente">Pendiente</option>
+              <option value="Reagendado">Reagendado</option>
+              <option value="Finalizado">Finalizado</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Prioridad</label>
+            <select id="inputPrioridad" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 font-semibold">
+              <option value="Media">Media (Normal)</option>
+              <option value="Alta">Alta (Urgente 🚨)</option>
+              <option value="Baja">Baja</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Condición</label>
+            <input type="text" id="inputCondicion" placeholder="Ej. Comodato privado, Venta..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Observacion</label>
+            <input type="text" id="inputObservacion" placeholder="Notas adicionales..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-slate-800 flex items-center justify-end gap-3">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl">Cancelar</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Ver Detalles con Bitácora -->
+  <div id="viewModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
+            <i class="fa-solid fa-eye text-xs"></i>
+          </div>
+          <h3 class="font-bold text-white text-sm">Detalles y Bitácora del Caso ST</h3>
+        </div>
+        <button onclick="closeViewModal()" class="text-slate-500 hover:text-slate-300"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div class="p-6 space-y-4 text-xs overflow-y-auto flex-1" id="viewModalContent"></div>
+
+      <div class="px-6 py-4 bg-slate-950 border-t border-slate-800 flex justify-end">
+        <button onclick="closeViewModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript App Engine -->
+  <script>
+    const CURRENT_DATE_STR = '2026-10-23';
+    const currentDateRef = new Date(CURRENT_DATE_STR);
+    let currentView = 'table';
+    let currentZoneTab = 'TODAS';
+    let isEditing = false;
+
+    let cases = JSON.parse(localStorage.getItem('cases_st_data')) || [];
+
+    function saveToLocalStorage() {
+      localStorage.setItem('cases_st_data', JSON.stringify(cases));
+    }
+
+    function clearAllData() {
+      cases = [];
+      localStorage.removeItem('cases_st_data');
+      renderApp();
+    }
+
+    // Función de Importación CSV compatible con punto y coma (;) y comas (,)
+    function importFromCSV(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const text = evt.target.result;
+        const lines = text.split('\n');
+        if (lines.length < 2) {
+          alert('El archivo CSV está vacío o no tiene el formato correcto.');
+          return;
+        }
+
+        const firstLine = lines[0];
+        const separator = firstLine.includes(';') ? ';' : ',';
+
+        function parseCSVLine(line, sep) {
+          const result = [];
+          let insideQuote = false;
+          let currentEntry = '';
+          for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+              if (insideQuote && line[i+1] === '"') {
+                currentEntry += '"';
+                i++;
+              } else {
+                insideQuote = !insideQuote;
+              }
+            } else if (char === sep && !insideQuote) {
+              result.push(currentEntry);
+              currentEntry = '';
+            } else {
+              currentEntry += char;
+            }
+          }
+          result.push(currentEntry);
+          return result.map(val => val.trim().replace(/^"|"$/g, ''));
+        }
+
+        const newCases = [];
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          const cols = parseCSVLine(line, separator);
+          if (cols.length >= 12) {
+            newCases.push({
+              nroCaso: cols[0],
+              zona: cols[1] || 'Central',
+              prioridad: cols[2] || 'Media',
+              condicion: cols[3] || '',
+              cliente: cols[4] || '',
+              equipos: cols[5] || '',
+              contacto: cols[6] || '',
+              detalle: cols[7] || '',
+              encargado: cols[8] || '',
+              fechaAgendado: cols[9] || '',
+              fechaCaso: cols[10] || '',
+              estado: cols[11] || 'Pendiente',
+              observacion: cols[12] || '',
+              notes: [{date: `${CURRENT_DATE_STR} 00:00`, author: 'Sistema', text: 'Caso importado.'}]
+            });
+          }
+        }
+
+        if (newCases.length > 0) {
+          cases = newCases;
+          saveToLocalStorage();
+          renderApp();
+          alert(`¡Se importaron ${newCases.length} casos exitosamente!`);
+        } else {
+          alert('No se encontraron registros válidos para importar.');
+        }
+        e.target.value = '';
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    function formatDateDisplay(dateStr) {
+      if(!dateStr) return '-';
+      const parts = dateStr.split('-');
+      if(parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      return dateStr;
+    }
+
+    function getSLAIndicator(item) {
+      if (item.estado === 'Finalizado') {
+        return `<span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded text-[10px] font-bold">✅ Completado</span>`;
+      }
+      if (!item.fechaAgendado) return '';
+
+      const t1 = new Date(CURRENT_DATE_STR).setHours(0,0,0,0);
+      const t2 = new Date(item.fechaAgendado).setHours(0,0,0,0);
+      const diffDays = Math.round((t2 - t1) / (1000 * 60 * 60 * 24));
+
+      if (diffDays < 0) {
+        const daysAbs = Math.abs(diffDays);
+        return `<span class="px-2 py-0.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded text-[10px] font-bold">⚠️ Vencido hace ${daysAbs}d</span>`;
+      } else if (diffDays === 0) {
+        return `<span class="px-2 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded text-[10px] font-bold">⚡ Vence hoy</span>`;
+      } else if (diffDays === 1) {
+        return `<span class="px-2 py-0.5 bg-orange-500/10 text-orange-400 border border-orange-500/20 rounded text-[10px] font-bold">⚡ Vence mañana</span>`;
+      } else {
+        return `<span class="px-2 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded text-[10px] font-medium">⏳ Faltan ${diffDays}d</span>`;
+      }
+    }
+
+    function isOverdue(item) {
+      if (item.estado !== 'Pendiente') return false;
+      return new Date(item.fechaAgendado) < currentDateRef;
+    }
+
+    function isDueTodayOrTomorrow(item) {
+      if (item.estado === 'Finalizado') return false;
+      if (!item.fechaAgendado) return false;
+      const t1 = new Date(CURRENT_DATE_STR).setHours(0,0,0,0);
+      const t2 = new Date(item.fechaAgendado).setHours(0,0,0,0);
+      const diffDays = Math.round((t2 - t1) / (1000 * 60 * 60 * 24));
+      return diffDays === 0 || diffDays === 1 || diffDays < 0;
+    }
+
+    function populateTechFilter() {
+      const techSelect = document.getElementById('techFilter');
+      const currentSelected = techSelect.value;
+      const techSet = new Set();
+      cases.forEach(c => {
+        if (c.encargado && c.encargado.trim()) techSet.add(c.encargado.trim());
+      });
+
+      techSelect.innerHTML = '<option value="TODOS">Todos los Encargados</option>';
+      Array.from(techSet).sort().forEach(tech => {
+        const option = document.createElement('option');
+        option.value = tech;
+        option.innerText = tech;
+        techSelect.appendChild(option);
+      });
+      techSelect.value = currentSelected || 'TODOS';
+    }
+
+    function setZoneTab(zone) {
+      currentZoneTab = zone;
+      document.getElementById('currentZoneLabel').innerText = zone === 'TODAS' ? 'Todas las Zonas' : `Zona ${zone}`;
+
+      ['TODAS', 'Central', 'Interior'].forEach(z => {
+        const btn = document.getElementById(z === 'TODAS' ? 'tabZonaTodas' : `tabZona${z}`);
+        if (z === zone) {
+          btn.className = "px-4 py-2 text-xs font-bold rounded-xl bg-indigo-600 text-white shadow-sm transition";
+        } else {
+          btn.className = "px-4 py-2 text-xs font-bold rounded-xl bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800 transition";
+        }
+      });
+      renderApp();
+    }
+
+    function setViewMode(mode) {
+      currentView = mode;
+      const btnTable = document.getElementById('btnViewTable');
+      const btnCards = document.getElementById('btnViewCards');
+      const btnKanban = document.getElementById('btnViewKanban');
+      const tableCont = document.getElementById('tableViewContainer');
+      const cardCont = document.getElementById('cardViewContainer');
+      const kanbanCont = document.getElementById('kanbanViewContainer');
+
+      [btnTable, btnCards, btnKanban].forEach(b => b.className = "px-3 py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1.5");
+      [tableCont, cardCont, kanbanCont].forEach(c => c.classList.add('hidden'));
+
+      if (mode === 'table') {
+        btnTable.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-sm transition flex items-center gap-1.5";
+        tableCont.classList.remove('hidden');
+      } else if (mode === 'cards') {
+        btnCards.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-sm transition flex items-center gap-1.5";
+        cardCont.classList.remove('hidden');
+      } else if (mode === 'kanban') {
+        btnKanban.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-sm transition flex items-center gap-1.5";
+        kanbanCont.classList.remove('hidden');
+      }
+      renderApp();
+    }
+
+    function toggleBISection() {
+      const content = document.getElementById('biContentArea');
+      const icon = document.getElementById('biToggleIcon');
+      content.classList.toggle('hidden');
+      icon.className = content.classList.contains('hidden') ? "fa-solid fa-chevron-down" : "fa-solid fa-chevron-up";
+    }
+
+    function toggleBellDropdown() {
+      const drop = document.getElementById('bellDropdown');
+      drop.classList.toggle('hidden');
+    }
+
+    function renderBellNotifications() {
+      const badge = document.getElementById('bellBadge');
+      const listContainer = document.getElementById('bellListContainer');
+      listContainer.innerHTML = '';
+
+      let urgentCases = cases.filter(c => isDueTodayOrTomorrow(c));
+      if (currentZoneTab !== 'TODAS') {
+        urgentCases = urgentCases.filter(c => c.zona === currentZoneTab);
+      }
+
+      if (urgentCases.length > 0) {
+        badge.innerText = urgentCases.length;
+        badge.classList.remove('hidden');
+
+        urgentCases.forEach(item => {
+          const div = document.createElement('div');
+          div.className = "bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between gap-2 text-xs";
+          div.innerHTML = `
+            <div>
+              <p class="font-bold text-white font-mono-num">#${item.nroCaso} - ${item.cliente}</p>
+              <p class="text-slate-400 text-[10px]">Agendado: ${formatDateDisplay(item.fechaAgendado)}</p>
+            </div>
+            <button onclick="viewCase('${item.nroCaso}')" class="px-2 py-1 bg-indigo-600 text-white rounded-lg text-[10px] font-semibold">Ver</button>
+          `;
+          listContainer.appendChild(div);
+        });
+      } else {
+        badge.classList.add('hidden');
+        listContainer.innerHTML = `<p class="text-slate-500 text-xs text-center py-2">No hay vencimientos urgentes hoy ni mañana.</p>`;
+      }
+    }
+
+    function renderApp() {
+      populateTechFilter();
+      renderBellNotifications();
+
+      const searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
+      const statusFilter = document.getElementById('statusFilter').value;
+      const techFilter = document.getElementById('techFilter').value;
+      const priorityFilter = document.getElementById('priorityFilter').value;
+      const dateFrom = document.getElementById('dateFromFilter').value;
+      const dateTo = document.getElementById('dateToFilter').value;
+
+      let filtered = cases.filter(item => {
+        if(item.area && item.area !== 'SERVICIO TECNICO') return false;
+        if(currentZoneTab !== 'TODAS' && item.zona !== currentZoneTab) return false;
+
+        const matchesSearch = item.nroCaso.toLowerCase().includes(searchQuery) ||
+                              item.cliente.toLowerCase().includes(searchQuery) ||
+                              (item.equipos && item.equipos.toLowerCase().includes(searchQuery)) ||
+                              (item.encargado && item.encargado.toLowerCase().includes(searchQuery)) ||
+                              (item.contacto && item.contacto.toLowerCase().includes(searchQuery)) ||
+                              (item.condicion && item.condicion.toLowerCase().includes(searchQuery));
+
+        let matchesStatus = true;
+        const overdue = isOverdue(item);
+
+        if (statusFilter === 'PENDIENTE_ATRASADO') matchesStatus = item.estado === 'Pendiente' && overdue;
+        else if (statusFilter === 'PENDIENTE_DIA') matchesStatus = item.estado === 'Pendiente' && !overdue;
+        else if (statusFilter === 'REAGENDADO') matchesStatus = item.estado === 'Reagendado';
+        else if (statusFilter === 'FINALIZADO') matchesStatus = item.estado === 'Finalizado';
+
+        const matchesTech = (techFilter === 'TODOS') || (item.encargado && item.encargado.trim() === techFilter);
+        const matchesPriority = (priorityFilter === 'TODOS') || ((item.prioridad || 'Media') === priorityFilter);
+
+        let matchesDate = true;
+        if (dateFrom && item.fechaAgendado) matchesDate = matchesDate && (item.fechaAgendado >= dateFrom);
+        if (dateTo && item.fechaAgendado) matchesDate = matchesDate && (item.fechaAgendado <= dateTo);
+
+        return matchesSearch && matchesStatus && matchesTech && matchesPriority && matchesDate;
+      });
+
+      renderTable(filtered);
+      renderCards(filtered);
+      renderKanban(filtered);
+      updateKPIs();
+      renderBIStats();
+      document.getElementById('recordCount').innerText = `Mostrando ${filtered.length} registros`;
+    }
+
+    function renderBIStats() {
+      let st = cases.filter(c => !c.area || c.area === 'SERVICIO TECNICO');
+      if (currentZoneTab !== 'TODAS') {
+        st = st.filter(c => c.zona === currentZoneTab);
+      }
+
+      // 1. Rendimiento Técnicos
+      const techContainer = document.getElementById('techProgressContainer');
+      techContainer.innerHTML = '';
+      const techMap = {};
+      st.forEach(c => {
+        const tech = c.encargado && c.encargado.trim() ? c.encargado.trim() : 'Sin Asignar';
+        if (!techMap[tech]) techMap[tech] = { total: 0, finished: 0 };
+        techMap[tech].total++;
+        if (c.estado === 'Finalizado') techMap[tech].finished++;
+      });
+
+      if (Object.keys(techMap).length === 0) {
+        techContainer.innerHTML = `<p class="text-slate-500 text-xs italic">Sin datos registrados.</p>`;
+      } else {
+        Object.keys(techMap).sort().forEach(tech => {
+          const data = techMap[tech];
+          const percent = data.total > 0 ? Math.round((data.finished / data.total) * 100) : 0;
+          techContainer.innerHTML += `
+            <div>
+              <div class="flex items-center justify-between text-xs mb-1">
+                <span class="font-bold text-slate-200">${tech}</span>
+                <span class="font-mono-num text-indigo-400">${data.finished}/${data.total} (${percent}%)</span>
+              </div>
+              <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                <div class="bg-indigo-500 h-2 rounded-full transition-all" style="width: ${percent}%"></div>
+              </div>
+            </div>`;
+        });
+      }
+
+      // 2. Equipos con más fallas
+      const eqContainer = document.getElementById('equipmentStatsContainer');
+      eqContainer.innerHTML = '';
+      const eqMap = {};
+      st.forEach(c => {
+        const eq = c.equipos && c.equipos.trim() ? c.equipos.trim() : 'Equipo Genérico';
+        eqMap[eq] = (eqMap[eq] || 0) + 1;
+      });
+      const sortedEq = Object.entries(eqMap).sort((a,b) => b[1] - a[1]).slice(0, 4);
+      const totalEqCount = st.length || 1;
+
+      if (sortedEq.length === 0) {
+        eqContainer.innerHTML = `<p class="text-slate-500 text-xs italic">Sin datos registrados.</p>`;
+      } else {
+        sortedEq.forEach(([eq, count]) => {
+          const percent = Math.round((count / totalEqCount) * 100);
+          eqContainer.innerHTML += `
+            <div>
+              <div class="flex items-center justify-between text-xs mb-1">
+                <span class="text-slate-300 truncate max-w-[180px]">${eq}</span>
+                <span class="font-mono-num text-amber-400">${count} caso${count > 1 ? 's' : ''}</span>
+              </div>
+              <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                <div class="bg-amber-500 h-2 rounded-full" style="width: ${percent}%"></div>
+              </div>
+            </div>`;
+        });
+      }
+
+      // 3. Zona Central vs Interior
+      const geoContainer = document.getElementById('geoStatsContainer');
+      geoContainer.innerHTML = '';
+      const centralCount = st.filter(c => c.zona === 'Central').length;
+      const interiorCount = st.filter(c => c.zona === 'Interior').length;
+      const totalGeo = st.length || 1;
+      const centralPct = Math.round((centralCount / totalGeo) * 100);
+      const interiorPct = Math.round((interiorCount / totalGeo) * 100);
+
+      if (st.length === 0) {
+        geoContainer.innerHTML = `<p class="text-slate-500 text-xs italic">Sin datos registrados.</p>`;
+      } else {
+        geoContainer.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between text-xs mb-1">
+              <span class="text-slate-300">Zona Central</span>
+              <span class="font-mono-num text-cyan-400">${centralCount} (${centralPct}%)</span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+              <div class="bg-cyan-500 h-2 rounded-full" style="width: ${centralPct}%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between text-xs mb-1">
+              <span class="text-slate-300">Zona Interior</span>
+              <span class="font-mono-num text-purple-400">${interiorCount} (${interiorPct}%)</span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+              <div class="bg-purple-500 h-2 rounded-full" style="width: ${interiorPct}%"></div>
+            </div>
+          </div>`;
+      }
+    }
+
+    function getPriorityBadge(prio) {
+      if (prio === 'Alta') return `<span class="px-2 py-0.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded text-[10px] font-bold inline-flex items-center gap-1"><i class="fa-solid fa-fire text-[9px]"></i> Alta</span>`;
+      if (prio === 'Baja') return `<span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded text-[10px] font-bold">Baja</span>`;
+      return `<span class="px-2 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded text-[10px] font-bold">Media</span>`;
+    }
+
+    function renderTable(filtered) {
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="py-12 text-center text-slate-500"><i class="fa-solid fa-inbox text-3xl mb-2 text-slate-600 block"></i>No hay datos cargados. Usa el botón "Nuevo Caso ST" o "Importar" para agregar registros.</td></tr>`;
+        return;
+      }
+
+      filtered.forEach(item => {
+        const overdue = isOverdue(item);
+        let badgeHTML = item.estado === 'Pendiente' ? (overdue ? `<span class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-red-950/80 text-red-400 border border-red-800/60">Vencido</span>` : `<span class="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-amber-950/50 text-amber-400 border border-amber-800/40">Pendiente</span>`) : (item.estado === 'Reagendado' ? `<span class="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-blue-950/80 text-blue-400 border border-blue-800/60">Reagendado</span>` : `<span class="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-emerald-950/60 text-emerald-400 border border-emerald-800/50">Finalizado</span>`);
+
+        const zonaBadge = item.zona === 'Interior' ? `<span class="px-2 py-0.5 bg-purple-950/60 text-purple-300 border border-purple-800/50 rounded text-[10px] font-bold">Interior</span>` : `<span class="px-2 py-0.5 bg-cyan-950/60 text-cyan-300 border border-cyan-800/50 rounded text-[10px] font-bold">Central</span>`;
+
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-800/50 transition-colors";
+        tr.innerHTML = `
+          <td class="py-3.5 px-4 font-mono-num font-bold text-center text-slate-200">${item.nroCaso}</td>
+          <td class="py-3.5 px-4 font-bold uppercase text-slate-200 tracking-tight">${item.cliente}</td>
+          <td class="py-3.5 px-4 text-indigo-300 font-semibold text-[11px]">${item.equipos || '-'}</td>
+          <td class="py-3.5 px-4 text-center"><div class="flex items-center justify-center gap-1.5">${zonaBadge} ${getPriorityBadge(item.prioridad)}</div></td>
+          <td class="py-3.5 px-4 text-slate-300 text-[11px] font-semibold">${item.encargado || '-'}</td>
+          <td class="py-3.5 px-4 text-center font-mono-num text-slate-300"><div>${formatDateDisplay(item.fechaAgendado)}</div><div class="mt-1">${getSLAIndicator(item)}</div></td>
+          <td class="py-3.5 px-4 text-center">${badgeHTML}</td>
+          <td class="py-3.5 px-4 text-center">
+            <div class="flex items-center justify-center gap-1.5">
+              <button onclick="sendWhatsApp('${item.nroCaso}')" class="p-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 rounded-lg" title="WhatsApp"><i class="fa-brands fa-whatsapp text-xs"></i></button>
+              <button onclick="viewCase('${item.nroCaso}')" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg" title="Ver"><i class="fa-solid fa-eye text-xs"></i></button>
+              <button onclick="openModal('${item.nroCaso}')" class="p-1.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 rounded-lg" title="Editar"><i class="fa-solid fa-pen text-xs"></i></button>
+              <button onclick="deleteCase('${item.nroCaso}')" class="p-1.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg" title="Eliminar"><i class="fa-solid fa-trash text-xs"></i></button>
+            </div>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderCards(filtered) {
+      const container = document.getElementById('cardViewContainer');
+      container.innerHTML = '';
+      filtered.forEach(item => {
+        const card = document.createElement('div');
+        card.className = "bg-slate-950/60 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between gap-3 shadow-sm";
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-2"><h4 class="font-bold text-white text-sm font-mono-num">Caso #${item.nroCaso}</h4> ${item.zona === 'Interior' ? '<span class="px-2 py-0.5 bg-purple-950/60 text-purple-300 rounded text-[10px]">Interior</span>' : '<span class="px-2 py-0.5 bg-cyan-950/60 text-cyan-300 rounded text-[10px]">Central</span>'} ${getPriorityBadge(item.prioridad)}</div>
+          </div>
+          <div class="space-y-1"><p class="font-bold text-slate-200 uppercase text-xs">${item.cliente}</p><p class="text-indigo-300 text-[11px]"><strong>Equipo:</strong> ${item.equipos || 'N/A'}</p><p class="text-slate-400 text-[11px]"><strong>Técnico:</strong> ${item.encargado || 'Sin asignar'}</p>${item.condicion ? `<p class="text-slate-400 text-[11px]"><strong>Condición:</strong> <span class="text-amber-300 font-semibold">${item.condicion}</span></p>` : ''}</div>
+          <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+            <span>Agendado: ${formatDateDisplay(item.fechaAgendado)}</span>
+            <div class="flex items-center gap-1.5"><button onclick="sendWhatsApp('${item.nroCaso}')" class="p-1.5 bg-emerald-600/20 text-emerald-400 rounded-lg"><i class="fa-brands fa-whatsapp"></i></button><button onclick="viewCase('${item.nroCaso}')" class="p-1.5 bg-slate-800 text-slate-300 rounded-lg"><i class="fa-solid fa-eye"></i></button><button onclick="openModal('${item.nroCaso}')" class="p-1.5 bg-indigo-600/20 text-indigo-400 rounded-lg"><i class="fa-solid fa-pen"></i></button></div>
+          </div>`;
+        container.appendChild(card);
+      });
+    }
+
+    // VISTA TABLERO KANBAN
+    function renderKanban(filtered) {
+      const colPendiente = document.getElementById('kanbanColPendiente');
+      const colReagendado = document.getElementById('kanbanColReagendado');
+      const colFinalizado = document.getElementById('kanbanColFinalizado');
+
+      colPendiente.innerHTML = '';
+      colReagendado.innerHTML = '';
+      colFinalizado.innerHTML = '';
+
+      let pCount = 0, rCount = 0, fCount = 0;
+
+      filtered.forEach(item => {
+        const card = document.createElement('div');
+        card.className = "bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex flex-col gap-2.5 shadow hover:border-indigo-500/50 cursor-grab active:cursor-grabbing transition";
+        card.draggable = true;
+        card.ondragstart = (e) => e.dataTransfer.setData('text/plain', item.nroCaso);
+
+        const nextStateBtn = item.estado === 'Pendiente' 
+          ? `<button onclick="changeCaseState('${item.nroCaso}', 'Reagendado')" class="px-2 py-1 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded text-[10px] font-bold">Pasar a Reagendado ➡️</button>` 
+          : (item.estado === 'Reagendado' 
+            ? `<button onclick="changeCaseState('${item.nroCaso}', 'Finalizado')" class="px-2 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 rounded text-[10px] font-bold">Finalizar 🚀</button>` 
+            : `<span class="text-[10px] text-emerald-400 font-bold">✅ Completado</span>`);
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="font-mono-num font-bold text-white text-xs">#${item.nroCaso}</span>
+            ${getPriorityBadge(item.prioridad)}
+          </div>
+          <div>
+            <p class="font-bold uppercase text-slate-200 text-xs">${item.cliente}</p>
+            <p class="text-indigo-300 text-[11px]">${item.equipos || 'Sin equipo'}</p>
+            ${item.condicion ? `<p class="text-slate-400 text-[10px]">Condición: <span class="text-amber-300">${item.condicion}</span></p>` : ''}
+          </div>
+          <div class="flex items-center justify-between pt-2 border-t border-slate-800 text-[10px] text-slate-400">
+            <span>${formatDateDisplay(item.fechaAgendado)}</span>
+            ${nextStateBtn}
+          </div>
+        `;
+
+        if (item.estado === 'Pendiente') {
+          colPendiente.appendChild(card);
+          pCount++;
+        } else if (item.estado === 'Reagendado') {
+          colReagendado.appendChild(card);
+          rCount++;
+        } else {
+          colFinalizado.appendChild(card);
+          fCount++;
+        }
+      });
+
+      document.getElementById('kanbanCountPendiente').innerText = pCount;
+      document.getElementById('kanbanCountReagendado').innerText = rCount;
+      document.getElementById('kanbanCountFinalizado').innerText = fCount;
+    }
+
+    function allowDrop(e) { e.preventDefault(); }
+
+    function dropCase(e, newState) {
+      e.preventDefault();
+      const nroCaso = e.dataTransfer.getData('text/plain');
+      if (!nroCaso) return;
+      changeCaseState(nroCaso, newState);
+    }
+
+    function changeCaseState(nroCaso, newState) {
+      const item = cases.find(c => c.nroCaso === nroCaso);
+      if (item) {
+        item.estado = newState;
+        saveToLocalStorage();
+        renderApp();
+      }
+    }
+
+    function sendWhatsApp(nroCaso) {
+      const item = cases.find(c => c.nroCaso === nroCaso);
+      if(!item) return;
+      const encargado = item.encargado ? item.encargado.trim() : 'Técnico';
+      const texto = `Hola *${encargado}*, hay un caso asignado que necesita tu atención 🚨\n\n📌 *Caso:* #${item.nroCaso}\n🏢 *Cliente:* ${item.cliente}\n💻 *Equipo:* ${item.equipos || 'N/A'}${item.condicion ? `\n📋 *Condición:* ${item.condicion}` : ''}\n⏰ *Vencimiento:* ${formatDateDisplay(item.fechaAgendado)}\n📝 *Reporte:* ${item.detalle || 'N/A'}`;
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`, '_blank');
+    }
+
+    function updateKPIs() {
+      let st = cases.filter(c => !c.area || c.area === 'SERVICIO TECNICO');
+      if (currentZoneTab !== 'TODAS') st = st.filter(c => c.zona === currentZoneTab);
+      document.getElementById('kpi-atrasados').innerText = st.filter(c => c.estado === 'Pendiente' && isOverdue(c)).length;
+      document.getElementById('kpi-pendientes').innerText = st.filter(c => c.estado === 'Pendiente' && !isOverdue(c)).length;
+      document.getElementById('kpi-reagendados').innerText = st.filter(c => c.estado === 'Reagendado').length;
+      document.getElementById('kpi-total').innerText = st.length;
+    }
+
+    function viewCase(nroCaso) {
+      const item = cases.find(c => c.nroCaso === nroCaso);
+      if(!item) return;
+      if (!item.notes) item.notes = [];
+
+      let notesHTML = item.notes.length === 0 ? `<p class="text-slate-500 italic text-[11px]">No hay notas registradas.</p>` : '';
+      item.notes.slice().reverse().forEach(n => {
+        notesHTML += `<div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1"><div class="flex items-center justify-between text-[10px] text-slate-400"><span class="font-bold text-indigo-300">${n.author}</span><span>${n.date}</span></div><p class="text-slate-200 text-xs">${n.text}</p></div>`;
+      });
+
+      document.getElementById('viewModalContent').innerHTML = `
+        <div class="grid grid-cols-2 gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800">
+          <div><strong class="text-slate-500">Nro. Caso:</strong> <p class="text-white font-mono-num font-bold">#${item.nroCaso}</p></div>
+          <div><strong class="text-slate-500">Zona:</strong> <p class="text-indigo-400 font-bold">${item.zona}</p></div>
+        </div>
+        <div><strong class="text-slate-500">Cliente:</strong> <p class="text-white uppercase font-bold">${item.cliente}</p></div>
+        <div><strong class="text-slate-500">Equipos:</strong> <p class="text-indigo-300 font-semibold">${item.equipos || 'N/A'}</p></div>
+        <div><strong class="text-slate-500">Condición:</strong> <p class="text-amber-300 font-semibold">${item.condicion || 'N/A'}</p></div>
+        <div><strong class="text-slate-500">Detalle:</strong> <p class="text-slate-200 bg-slate-950 p-2.5 rounded-lg border border-slate-800">${item.detalle || 'Sin detalle'}</p></div>
+        <div class="grid grid-cols-2 gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800">
+          <div><strong class="text-slate-500 block">Encargado:</strong> <span class="text-indigo-300">${item.encargado || 'N/A'}</span></div>
+          <div><strong class="text-slate-500 block">Prioridad:</strong> <span class="text-white font-bold">${item.prioridad || 'Media'}</span></div>
+        </div>
+        <div class="pt-3 border-t border-slate-800 space-y-3">
+          <h4 class="font-bold text-white text-xs flex items-center gap-2"><i class="fa-solid fa-comments text-indigo-400"></i> Bitácora</h4>
+          <div class="space-y-2 max-h-40 overflow-y-auto">${notesHTML}</div>
+          <div class="flex gap-2 pt-2"><input type="text" id="newNoteText" placeholder="Escribir nota..." class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"><button onclick="addNoteToCase('${item.nroCaso}')" class="px-3 py-2 bg-indigo-600 text-white rounded-xl text-xs"><i class="fa-solid fa-paper-plane"></i></button></div>
+        </div>`;
+      document.getElementById('viewModal').classList.remove('hidden');
+    }
+
+    function addNoteToCase(nroCaso) {
+      const input = document.getElementById('newNoteText');
+      const text = input.value.trim();
+      if (!text) return;
+      const item = cases.find(c => c.nroCaso === nroCaso);
+      if (!item) return;
+      if (!item.notes) item.notes = [];
+      const now = new Date();
+      item.notes.push({ date: `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`, author: item.encargado || 'Admin', text: text });
+      saveToLocalStorage();
+      viewCase(nroCaso);
+    }
+
+    function closeViewModal() { document.getElementById('viewModal').classList.add('hidden'); }
+
+    function openModal(nroCaso = null) {
+      isEditing = !!nroCaso;
+      const modal = document.getElementById('caseModal');
+      if (isEditing) {
+        document.getElementById('modalTitle').innerText = "Editar Caso";
+        const item = cases.find(c => c.nroCaso === nroCaso);
+        if (item) {
+          document.getElementById('editOriginalNroCaso').value = item.nroCaso;
+          document.getElementById('inputNroCaso').value = item.nroCaso;
+          document.getElementById('inputZona').value = item.zona || 'Central';
+          document.getElementById('inputCliente').value = item.cliente;
+          document.getElementById('inputEquipos').value = item.equipos || '';
+          document.getElementById('inputContacto').value = item.contacto || '';
+          document.getElementById('inputDetalle').value = item.detalle || '';
+          document.getElementById('inputEncargado').value = item.encargado || '';
+          document.getElementById('inputFechaCaso').value = item.fechaCaso || '';
+          document.getElementById('inputFechaAgendado').value = item.fechaAgendado || '';
+          document.getElementById('inputEstado').value = item.estado || 'Pendiente';
+          document.getElementById('inputPrioridad').value = item.prioridad || 'Media';
+          document.getElementById('inputCondicion').value = item.condicion || '';
+          document.getElementById('inputObservacion').value = item.observacion || '';
+        }
+      } else {
+        document.getElementById('modalTitle').innerText = "Nuevo Caso";
+        document.getElementById('newCaseForm').reset();
+        document.getElementById('editOriginalNroCaso').value = '';
+        document.getElementById('inputZona').value = currentZoneTab !== 'TODAS' ? currentZoneTab : 'Central';
+      }
+      modal.classList.remove('hidden');
+    }
+
+    function closeModal() { document.getElementById('caseModal').classList.add('hidden'); }
+
+    function handleSaveCase(e) {
+      e.preventDefault();
+      const originalNro = document.getElementById('editOriginalNroCaso').value;
+      const nroCaso = document.getElementById('inputNroCaso').value.trim();
+      const zona = document.getElementById('inputZona').value;
+      const cliente = document.getElementById('inputCliente').value.trim().toUpperCase();
+      const equipos = document.getElementById('inputEquipos').value.trim();
+      const contacto = document.getElementById('inputContacto').value.trim();
+      const detalle = document.getElementById('inputDetalle').value.trim();
+      const encargado = document.getElementById('inputEncargado').value.trim();
+      const fechaCaso = document.getElementById('inputFechaCaso').value;
+      const fechaAgendado = document.getElementById('inputFechaAgendado').value;
+      const estado = document.getElementById('inputEstado').value;
+      const prioridad = document.getElementById('inputPrioridad').value;
+      const condicion = document.getElementById('inputCondicion').value.trim();
+      const observacion = document.getElementById('inputObservacion').value.trim();
+
+      if (isEditing && originalNro) {
+        const idx = cases.findIndex(c => c.nroCaso === originalNro);
+        if (idx !== -1) cases[idx] = { ...cases[idx], nroCaso, zona, cliente, equipos, contacto, detalle, encargado, fechaCaso, fechaAgendado, estado, prioridad, condicion, observacion };
+      } else {
+        cases.unshift({ nroCaso, zona, cliente, equipos, contacto, detalle, encargado, fechaAgendado, fechaCaso, estado, prioridad, condicion, observacion, notes: [{date: `${CURRENT_DATE_STR} 00:00`, author: 'Sistema', text: 'Caso creado.'}] });
+      }
+      saveToLocalStorage();
+      closeModal();
+      renderApp();
+    }
+
+    function deleteCase(nroCaso) {
+      cases = cases.filter(c => c.nroCaso !== nroCaso);
+      saveToLocalStorage();
+      renderApp();
+    }
+
+    function resetFilters() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('statusFilter').value = 'TODOS';
+      document.getElementById('techFilter').value = 'TODOS';
+      document.getElementById('priorityFilter').value = 'TODOS';
+      document.getElementById('dateFromFilter').value = '';
+      document.getElementById('dateToFilter').value = '';
+      renderApp();
+    }
+
+    // Función de exportación corregida con punto y coma (;) y codificación UTF-8 BOM
+    function exportToCSV() {
+      let st = cases.filter(c => !c.area || c.area === 'SERVICIO TECNICO');
+      if (currentZoneTab !== 'TODAS') st = st.filter(c => c.zona === currentZoneTab);
+      
+      let csv = "\uFEFFNro. Caso;Zona;Prioridad;Condicion;Cliente;Equipos;Contacto;Detalle;Encargado;Fecha Agendado;Fecha Caso;Estado;Observacion\n";
+      
+      st.forEach(c => {
+        const row = [
+          c.nroCaso,
+          c.zona,
+          c.prioridad,
+          c.condicion || '',
+          c.cliente,
+          c.equipos || '',
+          c.contacto || '',
+          c.detalle || '',
+          c.encargado || '',
+          c.fechaAgendado || '',
+          c.fechaCaso || '',
+          c.estado || '',
+          c.observacion || ''
+        ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(';');
+        
+        csv += row + "\n";
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Servicio_Tecnico_${currentZoneTab}_${CURRENT_DATE_STR}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { renderApp(); });
+  </script>
+</body>
+</html>
